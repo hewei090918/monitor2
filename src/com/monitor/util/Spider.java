@@ -12,9 +12,9 @@ import java.io.OutputStream;
 import java.net.URL;
 import java.net.URLConnection;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -33,30 +33,33 @@ public class Spider {
 	 * 
 	 * 描述：	连接数据库并提取数据库里的图片地址 <br/>
 	 * 作者：	HeWei
-	 * @param content
-	 * @param count
+	 * @param index
 	 * @return 
 	 * List<String> 
 	 * <br/>
 	 */
-	public static List<String> packContent(int count) {
+	public static List<String> packContent(int index) {
 		List<String> urlList = new ArrayList<String>();
 		//获取数据库连接
 		Connection conn = (Connection) JdbcBaseDao.getConnection();
-		Statement stmt = null;
+		PreparedStatement ps = null;
 		ResultSet rs = null;
 		try {
-			stmt = (Statement) conn.createStatement();
-			String sql = "select * from source";
-//			String sql = "select * from T_WAIT_MATCH";
-			rs = stmt.executeQuery(sql);
+			//操作MySql数据库
+			String sql = "SELECT * from source LIMIT 1 OFFSET ?";
+			ps = conn.prepareStatement(sql);
+			ps.setInt(1, index);
+			//操作Oracle数据库
+//			String sql = "SELECT * from (select *,rownum as num from T_WAIT_MATCH) where num = ?";
+//			ps = conn.prepareStatement(sql);
+//			ps.setInt(1, index);
+			
+			rs = ps.executeQuery();
 			while(rs.next()) {
-				if(count > 0) {
-					String url = rs.getString(2);
-					System.out.println(url);
-					urlList.add(url);
-				}
-				count--;
+				String url = rs.getString("img_url");
+//				String url = rs.getString("UPIMGURL");
+				System.out.println(url);
+				urlList.add(url);
 			}
 	        
 		}catch (SQLException e) {
@@ -64,7 +67,7 @@ public class Spider {
 		} finally {
 			try {
 				rs.close();
-				stmt.close();
+				ps.close();
 				conn.close();
 			} catch (SQLException e) {
 				e.printStackTrace();
@@ -112,8 +115,8 @@ public class Spider {
      * 
      * 描述：	下载本地图片（类似于拷贝） <br/>
      * 作者：	HeWei
-     * @param imgUrl
-     * @param dist 
+     * @param imgUrl 图片下载源地址
+     * @param dist   图片下载保存位置
      * void 
      * <br/>
      */
